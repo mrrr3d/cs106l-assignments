@@ -1,13 +1,26 @@
-AUTOGRADER_PACKAGES = ["colorama==0.4.6"]
+AUTOGRADER_PACKAGES = [
+    # For logging and color output
+    "colorama==0.4.6",
+    # For CastXML installation
+    "requests==2.32.3",
+    # For CastXML installation
+    "py-cpuinfo==9.0.0",
+]
+
+# ==============================================================================
+# Virtual Environment Setup
+# ==============================================================================
+
 
 def check_virtualenv():
     import sys
     import os
     import subprocess
 
-    if not hasattr(sys, "real_prefix") and (sys.base_prefix == sys.prefix):
+    venv_path = os.path.dirname(os.path.abspath(__file__))
+
+    if os.environ.get("VIRTUAL_ENV", None) != venv_path:
         print("🔍 Not in a virtual environment. Creating one in 'autograder/'...")
-        venv_path = os.path.dirname(os.path.abspath(__file__))
 
         subprocess.check_call([sys.executable, "-m", "venv", venv_path])
         print("✅ Virtual environment created.")
@@ -34,10 +47,17 @@ def check_virtualenv():
 check_virtualenv()
 
 
+# ==============================================================================
+# Pip Package Installation
+# ==============================================================================
+
+
 def install_requirements():
     import sys
     import subprocess
     import os
+
+    print("⏳ Installing autograder packages (this may take a few minutes)...")
 
     # pip might need to be updated for packages to install, so let's make sure
     def check_pip_update():
@@ -50,15 +70,12 @@ def install_requirements():
         return "pip" in result.stdout
 
     if check_pip_update():
-        print("⏳ Detected outdated pip version. Updating...")
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "-U", "pip"],
             stdout=subprocess.DEVNULL,
         )
 
     REQUIREMENTS = os.path.join(os.path.dirname(__file__), "requirements.txt")
-
-    print("⏳ Installing autograder packages (this may take a few minutes)...")
 
     # Packages required by the core autograder
     for package in AUTOGRADER_PACKAGES:
@@ -73,40 +90,71 @@ def install_requirements():
             [sys.executable, "-m", "pip", "install", "-r", REQUIREMENTS],
             stdout=subprocess.DEVNULL,
         )
-    
+
     print("✅ Autograder packages installed.")
 
 
 # Install autograder packages on import
 install_requirements()
 
-def check_for_updates():
-    import subprocess 
-
-    def needs_update() -> bool:
-        try:
-            subprocess.check_call(["git", "rev-parse", "--is-inside-work-tree"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.check_call(["git", "fetch", "origin"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-            origin_main_commit = subprocess.check_output(["git", "rev-parse", "origin/main"]).strip()
-            result = subprocess.run(["git", "merge-base", "--is-ancestor", origin_main_commit, "HEAD"])
-            return result.returncode != 0
-
-        except subprocess.CalledProcessError:
-            return False
-
-    if needs_update():
-        print("\n🔄 It looks like your assignment might be out of date. Try running:"
-              "\n\n\tgit pull origin main"
-              "\n\nto fetch any updates, and then re-run your code.")
-
-check_for_updates()
+# ==============================================================================
+# Imports
+# ==============================================================================
 
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Union
 from colorama import Fore, init, Style, Back
 
 init()
+
+
+# ==============================================================================
+# Checking for Updates
+# ==============================================================================
+
+
+def check_for_updates():
+    import subprocess
+
+    def needs_update() -> bool:
+        try:
+            subprocess.check_call(
+                ["git", "rev-parse", "--is-inside-work-tree"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.check_call(
+                ["git", "fetch", "origin"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            origin_main_commit = subprocess.check_output(
+                ["git", "rev-parse", "origin/main"]
+            ).strip()
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", origin_main_commit, "HEAD"]
+            )
+            return result.returncode != 0
+
+        except subprocess.CalledProcessError:
+            return False
+
+    if needs_update():
+        tab = f"{Back.YELLOW} {Back.RESET} "
+        print(
+            f"\n{tab}🔄 It looks like your assignment might be out of date. Try running:"
+            f"\n{tab}\n{tab}\tgit pull origin main"
+            f"\n{tab}\n{tab}to fetch any updates, and then re-run your code.\n"
+        )
+
+
+check_for_updates()
+
+
+# ==============================================================================
+# Autograder Core
+# ==============================================================================
 
 
 @dataclass(frozen=True)
@@ -121,8 +169,11 @@ class Autograder:
     setup: Optional[Callable[[], None]] = None
     teardown: Optional[Callable[[], None]] = None
 
-    def __init__(self):
+    def __init__(self, *, install_castxml: bool = False):
         self.parts = []
+
+        if install_castxml:
+            _install_castxml()
 
     def add_part(self, name: str, func: Callable[[], bool]) -> None:
         self.parts.append(TestPart(name, func))
@@ -166,3 +217,74 @@ class Autograder:
             print(
                 f"\n{Back.LIGHTGREEN_EX}{Fore.LIGHTWHITE_EX}{message}{Style.RESET_ALL}"
             )
+
+
+# ==============================================================================
+# CastXML Installation
+# ==============================================================================
+
+
+def _install_castxml():
+    import os
+
+    print("⏳ Installing CastXML...")
+
+    bin_path = os.environ.get("VIRTUAL_ENV_BIN")
+    castxml_dir = os.path.join(bin_path, "castxml")
+
+    castxml_bin_dir = os.path.join(castxml_dir, "bin")
+    os.environ["PATH"] = os.pathsep.join(
+        [castxml_bin_dir, *os.environ.get("PATH", "").split(os.pathsep)]
+    )
+
+    if os.path.isdir(castxml_dir):
+        return
+
+    def get_platform_file():
+        import platform
+        import cpuinfo
+        import re
+
+        os_name = platform.system().lower()
+        arch = platform.machine().lower()
+
+        if os_name == "linux" and arch == "aarch64":
+            return "linux-aarch64.tar.gz"
+        elif os_name == "linux":
+            return "linux.tar.gz"
+        elif os_name == "darwin":
+            # Need to handle running Python under Rosetta on Apple Silicon
+            brand = cpuinfo.get_cpu_info()["brand_raw"]
+            if "arm" in arch or re.match(r"Apple M\d+", brand):
+                return "macos-arm.tar.gz"
+            return "macosx.tar.gz"
+        elif os_name == "windows":
+            return "windows.zip"
+
+        raise RuntimeError(
+            f"It looks like you are running on an unknown platform: {os_name}/{arch}. Please make a post on EdStem!"
+        )
+
+    castxml_file = get_platform_file()
+    castxml_download_url = f"https://github.com/CastXML/CastXMLSuperbuild/releases/download/v0.6.5/castxml-{castxml_file}"
+
+    import requests
+    import zipfile
+    import tarfile
+
+    castxml_archive_path = os.path.join(bin_path, castxml_file)
+
+    with requests.get(castxml_download_url, stream=True) as r:
+        r.raise_for_status()
+        with open(castxml_archive_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+    if castxml_file.endswith(".zip"):
+        with zipfile.ZipFile(castxml_archive_path, "r") as zip_ref:
+            zip_ref.extractall(bin_path)
+    elif castxml_file.endswith(".tar.gz"):
+        with tarfile.open(castxml_archive_path, "r:gz") as tar_ref:
+            tar_ref.extractall(bin_path)
+
+    print("✅ Installed CastXML!")
