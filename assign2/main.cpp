@@ -7,6 +7,7 @@
  *
  */
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <queue>
@@ -16,7 +17,7 @@
 
 #include "utils.h"
 
-std::string kYourName = "STUDENT TODO"; // Don't forget to change this!
+std::string kYourName = "Aa Dd"; // Don't forget to change this!
 
 /**
  * Takes in a file name and returns a set containing all of the applicant names as a set.
@@ -31,6 +32,27 @@ std::string kYourName = "STUDENT TODO"; // Don't forget to change this!
  */
 std::set<std::string> get_applicants(std::string filename) {
   // STUDENT TODO: Implement this function.
+  std::ifstream ifs(filename);
+  std::set<std::string> res;
+  if (ifs.is_open()) {
+    std::string name;
+    while (std::getline(ifs, name)) {
+      res.insert(name);
+    }
+  }
+  ifs.close();
+
+  return res;
+}
+
+std::string get_initials(const std::string& name) {
+  std::string initial;
+  for (auto c : name) {
+    if (c >= 'A' && c <= 'Z') {
+      initial.push_back(c);
+    }
+  }
+  return initial;
 }
 
 /**
@@ -43,6 +65,15 @@ std::set<std::string> get_applicants(std::string filename) {
  */
 std::queue<const std::string*> find_matches(std::string name, std::set<std::string>& students) {
   // STUDENT TODO: Implement this function.
+  std::queue<const std::string*> res;
+  std::string name_initial = get_initials(name);
+  for (const auto& t : students) {
+    if (name_initial == get_initials(t)) {
+      res.push(&t);
+    }
+  }
+
+  return res;
 }
 
 /**
@@ -57,6 +88,16 @@ std::queue<const std::string*> find_matches(std::string name, std::set<std::stri
  */
 std::string get_match(std::queue<const std::string*>& matches) {
   // STUDENT TODO: Implement this function.
+  size_t len = matches.size();
+  if (! len)
+    return "NO MATCHED FOUND.";
+  
+  len /= 2;
+  while (len) {
+    matches.pop();
+    --len;
+  }
+  return *(matches.front());
 }
 
 /* #### Please don't modify this call to the autograder! #### */
