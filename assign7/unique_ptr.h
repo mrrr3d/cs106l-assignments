@@ -12,6 +12,8 @@ template <typename T> class unique_ptr {
 private:
   /* STUDENT TODO: What data must a unique_ptr keep track of? */
 
+  T* p;
+
 public:
   /**
    * @brief Constructs a new `unique_ptr` from the given pointer.
@@ -20,6 +22,8 @@ public:
    */
   unique_ptr(T* ptr) {
     /* STUDENT TODO: Implement the constructor */
+    p = ptr;
+    return;
     throw std::runtime_error("Not implemented: unique_ptr(T* ptr)");
   }
 
@@ -28,6 +32,8 @@ public:
    */
   unique_ptr(std::nullptr_t) {
     /* STUDENT TODO: Implement the nullptr constructor */
+    p = nullptr;
+    return;
     throw std::runtime_error("Not implemented: unique_ptr(std::nullptr_t)");
   }
 
@@ -43,6 +49,7 @@ public:
    */
   T& operator*() {
     /* STUDENT TODO: Implement the dereference operator */
+    return *p;
     throw std::runtime_error("Not implemented: operator*()");
   }
 
@@ -52,6 +59,7 @@ public:
    */
   const T& operator*() const {
     /* STUDENT TODO: Implement the dereference operator (const) */
+    return *p;
     throw std::runtime_error("Not implemented: operator*() const");
   }
 
@@ -62,6 +70,7 @@ public:
    */
   T* operator->() {
     /* STUDENT TODO: Implement the arrow operator */
+    return p;
     throw std::runtime_error("Not implemented: operator->()");
   }
 
@@ -72,6 +81,7 @@ public:
    */
   const T* operator->() const {
     /* STUDENT TODO: Implement the arrow operator */
+    return p;
     throw std::runtime_error("Not implemented: operator->() const");
   }
 
@@ -82,6 +92,7 @@ public:
    */
   operator bool() const {
     /* STUDENT TODO: Implement the boolean conversion operator */
+    return p != nullptr;
     throw std::runtime_error("Not implemented: operator bool() const");
   }
 
@@ -92,6 +103,25 @@ public:
    * - Implement the move constructor
    * - Implement the move assignment operator
    */
+  ~unique_ptr() {
+    delete p;
+  }
+
+  unique_ptr(const unique_ptr& other) = delete;
+  unique_ptr& operator = (const unique_ptr& other) = delete;
+
+  unique_ptr(unique_ptr&& other) {
+    p = other.p;
+    other.p = nullptr;
+  }
+
+  unique_ptr& operator = (unique_ptr&& other) {
+    if (this == &other) return *this;
+    delete p;
+    p = other.p;
+    other.p = nullptr;
+    return *this;
+  }
 };
 
 /**

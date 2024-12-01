@@ -3,8 +3,10 @@
  * Created by Jacob Roberts-Baca.
  */
 
+#include <algorithm>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -52,6 +54,14 @@ template <typename T> struct ListNode {
  */
 template <typename T> unique_ptr<ListNode<T>> create_list(const std::vector<T>& values) {
   /* STUDENT TODO: Implement this method */
+  // auto head = make_unique<ListNode<T>>(nullptr);
+  unique_ptr<ListNode<T>> head = nullptr;
+  for (int i = values.size() - 1; i >= 0; --i) {
+    auto node = make_unique<ListNode<T>>(values[i]);
+    node->next = std::move(head);
+    head = std::move(node); 
+  }
+  return head;
   throw std::runtime_error("Not implemented: createList");
 }
 
